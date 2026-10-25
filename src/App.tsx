@@ -8,6 +8,7 @@ import { NotFoundPage } from './components/NotFoundPage';
 import { Footer } from './components/Footer';
 import { Finding } from './types';
 import { executeVulnerabilityScan } from './services/scannerEngine';
+import { CyberRadarAnimation } from './components/CyberRadarAnimation';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('scanner');
@@ -120,6 +121,9 @@ export const App: React.FC = () => {
               errorMessage={errorMessage}
               successMessage={successMessage}
             />
+
+            {/* Webflow-inspired Cyber Radar Animation */}
+            <CyberRadarAnimation isScanning={isScanning} findingsCount={findings.length} />
 
             {/* Findings Display & Analysis */}
             <FindingsTable
