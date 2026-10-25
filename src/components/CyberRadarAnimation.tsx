@@ -5,6 +5,17 @@ interface CyberRadarAnimationProps {
   findingsCount: number;
 }
 
+interface RadarNode {
+  x: number;
+  y: number;
+  angle: number;
+  dist: number;
+  size: number;
+  alpha: number;
+  isThreat: boolean;
+  label: string;
+}
+
 export const CyberRadarAnimation: React.FC<CyberRadarAnimationProps> = ({ isScanning, findingsCount }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -15,110 +26,173 @@ export const CyberRadarAnimation: React.FC<CyberRadarAnimationProps> = ({ isScan
     if (!ctx) return;
 
     let animationId: number;
-    let angle = 0;
-    const targets: Array<{ x: number; y: number; size: number; alpha: number; isThreat: boolean }> = [];
+    let sweepAngle = 0;
+    const nodes: RadarNode[] = [];
 
-    // Resize canvas
-    const resize = () => {
-      canvas.width = canvas.parentElement?.clientWidth || 400;
-      canvas.height = 240;
+    const updateDimensions = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.parentElement?.clientWidth || 400;
+      const height = 260;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+
+      ctx.scale(dpr, dpr);
     };
-    resize();
-    window.addEventListener('resize', resize);
 
-    // Generate random nodes
-    const count = Math.max(8, Math.min(24, findingsCount > 0 ? findingsCount * 2 : 12));
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+
+    // Initial Threat/Recon Nodes
+    const threatLabels = ['PORT:443', 'PATH:/.git', 'CORS:REFL', 'HDR:HSTS', 'TOKEN:REDACT', 'SQL:ANOMALY', 'XSS:DOM', 'TLS:1.3'];
+    const count = Math.max(10, Math.min(24, findingsCount > 0 ? findingsCount * 3 : 12));
+    
     for (let i = 0; i < count; i++) {
-      targets.push({
-        x: Math.random() * (canvas.width - 60) + 30,
-        y: Math.random() * (canvas.height - 60) + 30,
-        size: Math.random() * 2 + 2,
-        alpha: Math.random() * 0.7 + 0.3,
-        isThreat: i < findingsCount
+      const a = Math.random() * Math.PI * 2;
+      const d = 0.2 + Math.random() * 0.7; // percentage of radius
+      nodes.push({
+        x: 0,
+        y: 0,
+        angle: a,
+        dist: d,
+        size: Math.random() * 1.5 + 2,
+        alpha: Math.random() * 0.6 + 0.3,
+        isThreat: i < findingsCount,
+        label: threatLabels[i % threatLabels.length]
       });
     }
 
     const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
 
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
-      const radius = Math.min(cx, cy) - 15;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxRadius = Math.min(cx, cy) - 20;
 
-      // Draw background grid lines (Webflow matrix look)
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.08)';
+      // 1. Tactical Cartesian Grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
       ctx.lineWidth = 1;
-
-      for (let x = 0; x < canvas.width; x += 30) {
+      const step = 40;
+      for (let x = 0; x < w; x += step) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+        ctx.lineTo(x, h);
         ctx.stroke();
       }
-      for (let y = 0; y < canvas.height; y += 30) {
+      for (let y = 0; y < h; y += step) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
+        ctx.lineTo(w, y);
         ctx.stroke();
       }
 
-      // Draw Concentric Radar Circles
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.25)';
-      ctx.lineWidth = 1;
-      [0.3, 0.6, 0.9].forEach(factor => {
+      // 2. Concentric Radar Rings & Distance Marks
+      const rings = [0.25, 0.5, 0.75, 1.0];
+      rings.forEach((factor, idx) => {
+        const r = maxRadius * factor;
+        ctx.strokeStyle = idx === rings.length - 1 
+          ? 'rgba(6, 182, 212, 0.3)' 
+          : 'rgba(6, 182, 212, 0.12)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(cx, cy, radius * factor, 0, Math.PI * 2);
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.stroke();
+
+        // Distance text
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.4)';
+        ctx.font = '9px monospace';
+        ctx.fillText(`${Math.round(factor * 100)}m`, cx + 4, cy - r + 11);
       });
 
-      // Crosshairs
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.2)';
+      // 3. Compass Crosshairs & Degree Labels
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.18)';
       ctx.beginPath();
-      ctx.moveTo(cx - radius, cy);
-      ctx.lineTo(cx + radius, cy);
-      ctx.moveTo(cx, cy - radius);
-      ctx.lineTo(cx, cy + radius);
+      ctx.moveTo(cx - maxRadius, cy);
+      ctx.lineTo(cx + maxRadius, cy);
+      ctx.moveTo(cx, cy - maxRadius);
+      ctx.lineTo(cx, cy + maxRadius);
       ctx.stroke();
 
-      // Rotating Sweep Beam
-      if (isScanning) {
-        angle += 0.04;
-      } else {
-        angle += 0.01;
-      }
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.6)';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('000°', cx, cy - maxRadius - 6);
+      ctx.fillText('180°', cx, cy + maxRadius + 14);
+      ctx.fillText('270°', cx - maxRadius - 16, cy + 3);
+      ctx.fillText('090°', cx + maxRadius + 16, cy + 3);
+      ctx.textAlign = 'left';
 
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-      grad.addColorStop(0, 'rgba(6, 182, 212, 0.4)');
-      grad.addColorStop(1, 'rgba(6, 182, 212, 0.0)');
+      // 4. Sweep Beam Update
+      sweepAngle += isScanning ? 0.035 : 0.008;
+      if (sweepAngle >= Math.PI * 2) sweepAngle -= Math.PI * 2;
 
+      // Draw Sweep Beam Trail (Phosphor Fan)
+      const trailAngle = 0.5; // arc in radians
       ctx.save();
+      const sweepGradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxRadius);
+      sweepGradient.addColorStop(0, 'rgba(6, 182, 212, 0.35)');
+      sweepGradient.addColorStop(1, 'rgba(6, 182, 212, 0.0)');
+
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, radius, angle, angle + 0.4);
+      ctx.arc(cx, cy, maxRadius, sweepAngle - trailAngle, sweepAngle, false);
       ctx.closePath();
-      ctx.fillStyle = grad;
+      ctx.fillStyle = sweepGradient;
       ctx.fill();
+
+      // Sharp Leading Edge
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(
+        cx + Math.cos(sweepAngle) * maxRadius,
+        cy + Math.sin(sweepAngle) * maxRadius
+      );
+      ctx.stroke();
       ctx.restore();
 
-      // Draw Targets / Pings
-      targets.forEach(t => {
+      // 5. Render Threat & Recon Nodes
+      nodes.forEach((n) => {
+        const nx = cx + Math.cos(n.angle) * (maxRadius * n.dist);
+        const ny = cy + Math.sin(n.angle) * (maxRadius * n.dist);
+
+        // Calculate angular difference to sweep beam
+        let diff = sweepAngle - n.angle;
+        while (diff < 0) diff += Math.PI * 2;
+        while (diff >= Math.PI * 2) diff -= Math.PI * 2;
+
+        const isPinged = diff < 0.25;
+
         ctx.beginPath();
-        ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
-        if (t.isThreat) {
-          ctx.fillStyle = `rgba(239, 68, 68, ${t.alpha})`;
+        ctx.arc(nx, ny, isPinged ? n.size * 1.6 : n.size, 0, Math.PI * 2);
+
+        if (n.isThreat) {
+          ctx.fillStyle = isPinged ? 'rgba(239, 68, 68, 1.0)' : `rgba(239, 68, 68, ${n.alpha})`;
           ctx.shadowColor = '#ef4444';
-          ctx.shadowBlur = 8;
+          ctx.shadowBlur = isPinged ? 8 : 2;
         } else {
-          ctx.fillStyle = `rgba(6, 182, 212, ${t.alpha})`;
+          ctx.fillStyle = isPinged ? 'rgba(16, 185, 129, 1.0)' : `rgba(6, 182, 212, ${n.alpha})`;
           ctx.shadowColor = '#06b6d4';
-          ctx.shadowBlur = 4;
+          ctx.shadowBlur = isPinged ? 6 : 1;
         }
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Ping expansion when scanning
-        if (isScanning) {
-          t.alpha = (t.alpha + 0.02) % 1;
+        // Draw HUD target bracket if pinged
+        if (isPinged && (n.isThreat || isScanning)) {
+          ctx.strokeStyle = n.isThreat ? 'rgba(239, 68, 68, 0.7)' : 'rgba(6, 182, 212, 0.6)';
+          ctx.lineWidth = 1;
+          const s = 7;
+          ctx.strokeRect(nx - s, ny - s, s * 2, s * 2);
+
+          ctx.fillStyle = n.isThreat ? 'rgba(239, 68, 68, 0.9)' : 'rgba(6, 182, 212, 0.8)';
+          ctx.font = '8px monospace';
+          ctx.fillText(n.label, nx + s + 3, ny + 3);
         }
       });
 
@@ -129,27 +203,33 @@ export const CyberRadarAnimation: React.FC<CyberRadarAnimationProps> = ({ isScan
 
     return () => {
       cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', updateDimensions);
     };
   }, [isScanning, findingsCount]);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl bg-[#070b16] border border-cyan-500/20 shadow-2xl p-4 my-6">
-      <div className="flex items-center justify-between mb-2">
+    <div className="relative w-full overflow-hidden rounded-lg bg-[#07090E] border border-zinc-800 p-4 my-6 shadow-2xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2 border-b border-zinc-800/80">
         <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isScanning ? 'bg-cyan-400' : 'bg-emerald-400'} opacity-75`}></span>
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${isScanning ? 'bg-cyan-500' : 'bg-emerald-500'}`}></span>
-          </span>
-          <span className="text-xs font-mono-code font-bold uppercase tracking-wider text-cyan-400">
-            {isScanning ? 'Radar Sweep Active — Auditing Nodes' : 'Attack Surface Radar Idle'}
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span className="text-xs font-mono-code font-bold uppercase tracking-wider text-white">
+            {isScanning ? 'RADAR TELEMETRY: ACTIVE RECONNAISSANCE SWEEP' : 'SURFACE RADAR: PASSIVE SCAN MONITOR'}
           </span>
         </div>
-        <span className="text-[11px] font-mono-code text-slate-500">360° Real-Time Heuristics</span>
+        <div className="flex items-center gap-4 text-[11px] font-mono-code text-zinc-400">
+          <span>FREQ: 60Hz</span>
+          <span>RANGE: 200m</span>
+          <span className="text-cyan-400">STATUS: CALIBRATED</span>
+        </div>
       </div>
 
-      <div className="w-full flex justify-center">
-        <canvas ref={canvasRef} className="w-full h-[240px] block" />
+      <div className="w-full flex justify-center py-2">
+        <canvas ref={canvasRef} className="block cursor-crosshair" />
+      </div>
+
+      <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-[10px] font-mono-code text-zinc-500">
+        <span>COORDINATES: SPHERICAL AZIMUTH / RANGE</span>
+        <span>SECURITY LEVEL: ASSURANCE 4</span>
       </div>
     </div>
   );

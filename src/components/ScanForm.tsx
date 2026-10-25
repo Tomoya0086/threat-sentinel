@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Play, Square, AlertCircle, CheckCircle2, Globe, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Play, Square, AlertCircle, CheckCircle2, Globe, SlidersHorizontal, Terminal, ShieldCheck, Activity } from 'lucide-react';
 
 interface ScanFormProps {
   onStartScan: (url: string, depth: number, threads: number) => void;
@@ -28,7 +28,7 @@ export const ScanForm: React.FC<ScanFormProps> = ({
 
   const quickTargets = [
     { label: 'Target: ChemSpace (Vercel)', url: 'https://chemistry-virtual-14mxmgyg9-hoctf.vercel.app' },
-    { label: 'Target: Staging Portal', url: 'https://portal-staging.threatsentinel.io' },
+    { label: 'Target: Staging Host', url: 'https://portal-staging.threatsentinel.io' },
     { label: 'Target: API Sandbox', url: 'https://sandbox.threatsentinel.io/v1' }
   ];
 
@@ -36,7 +36,7 @@ export const ScanForm: React.FC<ScanFormProps> = ({
     e.preventDefault();
     const trimmed = targetUrl.trim();
     if (!trimmed) {
-      setInputError('Please enter a target URL or domain.');
+      setInputError('Please specify a target hostname or IP address.');
       return;
     }
     try {
@@ -47,35 +47,35 @@ export const ScanForm: React.FC<ScanFormProps> = ({
       setInputError('');
       onStartScan(formatted, depth, threads);
     } catch {
-      setInputError('Invalid URL format. Please provide a valid hostname (e.g. https://your-site.com).');
+      setInputError('Invalid URI syntax. Please provide a fully qualified domain name (e.g. https://target.domain).');
     }
   };
 
   return (
-    <div className="bg-[#0b1020]/90 border border-slate-800/80 rounded-2xl p-5 sm:p-7 shadow-xl shadow-cyan-950/20 backdrop-blur-sm">
-      {/* Notifications / Alerts (Rules 14 & 15) */}
+    <div className="bg-[#0B0F17] border border-zinc-800 rounded-lg p-5 sm:p-6 shadow-xl space-y-4">
+      {/* Alert Banners */}
       {errorMessage && (
-        <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-3 text-red-300 text-sm animate-in fade-in">
-          <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+        <div className="p-3.5 rounded bg-rose-950/20 border border-rose-800/50 flex items-start gap-3 text-rose-300 text-xs sm:text-sm animate-in fade-in">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
           <div>
-            <span className="font-semibold block text-red-200">Scan Error:</span>
+            <span className="font-semibold block text-rose-200 uppercase text-[11px] tracking-wider">Engine Scan Exception:</span>
             {errorMessage}
           </div>
         </div>
       )}
 
       {successMessage && (
-        <div className="mb-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-3 text-emerald-300 text-sm animate-in fade-in">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+        <div className="p-3.5 rounded bg-emerald-950/20 border border-emerald-800/50 flex items-start gap-3 text-emerald-300 text-xs sm:text-sm animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
           <div>
-            <span className="font-semibold block text-emerald-200">Scan Completed Successfully:</span>
+            <span className="font-semibold block text-emerald-200 uppercase text-[11px] tracking-wider">Execution Completed:</span>
             {successMessage}
           </div>
         </div>
       )}
 
       {inputError && (
-        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2.5 text-amber-300 text-sm">
+        <div className="p-3 rounded bg-amber-950/20 border border-amber-800/50 flex items-center gap-2.5 text-amber-300 text-xs sm:text-sm">
           <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
           <span>{inputError}</span>
         </div>
@@ -84,16 +84,20 @@ export const ScanForm: React.FC<ScanFormProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Main URL Bar */}
         <div>
-          <label htmlFor="target-input" className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-            Target Host or Web Application URL:
-          </label>
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex items-center justify-between mb-2 text-xs font-mono-code text-zinc-400">
+            <span className="flex items-center gap-1.5 uppercase tracking-wider text-zinc-300">
+              <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+              Target Host Input Console:
+            </span>
+            <span className="text-zinc-500 hidden sm:inline">RFC 3986 COMPLIANT URI</span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                <Globe className="w-5 h-5 text-cyan-400" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                <Globe className="w-4 h-4 text-cyan-400" />
               </div>
               <input
-                id="target-input"
                 type="text"
                 value={targetUrl}
                 onChange={(e) => {
@@ -101,8 +105,8 @@ export const ScanForm: React.FC<ScanFormProps> = ({
                   if (inputError) setInputError('');
                 }}
                 disabled={isScanning}
-                placeholder="https://example.com"
-                className="w-full pl-11 pr-4 py-3.5 bg-[#070b14] border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all font-mono-code"
+                placeholder="https://target-organization.com"
+                className="w-full pl-10 pr-4 py-3 bg-[#07090E] border border-zinc-700/80 rounded text-white placeholder-zinc-600 text-sm focus:outline-none focus:border-cyan-500 font-mono-code transition-colors"
               />
             </div>
 
@@ -110,45 +114,65 @@ export const ScanForm: React.FC<ScanFormProps> = ({
               {!isScanning ? (
                 <button
                   type="submit"
-                  className="flex-1 sm:flex-none px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/25 transition-all transform active:scale-95 cursor-pointer"
+                  className="flex-1 sm:flex-none px-6 py-3 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-colors cursor-pointer select-none"
                 >
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>Launch Vulnerability Scan</span>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Execute Audit</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={onStopScan}
-                  className="flex-1 sm:flex-none px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-red-500/25 transition-all cursor-pointer"
+                  className="flex-1 sm:flex-none px-6 py-3 rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-colors cursor-pointer select-none"
                 >
-                  <Square className="w-4 h-4 fill-current" />
-                  <span>Cancel Scan</span>
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  <span>Abort Scan</span>
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className={`p-3.5 rounded-xl border transition-colors flex items-center justify-center ${
+                className={`p-3 rounded border transition-colors flex items-center justify-center cursor-pointer ${
                   showAdvanced 
-                    ? 'bg-slate-800 border-cyan-500/50 text-cyan-400' 
-                    : 'bg-[#070b14] border-slate-700 text-slate-400 hover:text-white'
+                    ? 'bg-zinc-800 border-cyan-500/50 text-cyan-400' 
+                    : 'bg-[#07090E] border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
                 }`}
-                title="Toggle Scan Engine Settings"
-                aria-label="Scan Engine Settings"
+                title="Toggle Scan Concurrency & Depth"
+                aria-label="Scan Configuration"
               >
-                <SlidersHorizontal className="w-5 h-5" />
+                <SlidersHorizontal className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Quick Targets / Benchmarks */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            Quick Targets:
-          </span>
+        {/* Tactical Telemetry Ribbon */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1 text-[11px] font-mono-code text-zinc-400 border-y border-zinc-800/80">
+          <div className="flex items-center gap-1.5 py-1">
+            <span className="text-zinc-600">SCHEME:</span>
+            <span className="text-cyan-400">HTTPS / TLS 1.3</span>
+          </div>
+          <div className="flex items-center gap-1.5 py-1">
+            <span className="text-zinc-600">METHOD:</span>
+            <span className="text-zinc-300">PASSIVE HEURISTIC</span>
+          </div>
+          <div className="flex items-center gap-1.5 py-1">
+            <span className="text-zinc-600">THREADS:</span>
+            <span className="text-zinc-300">{threads} CONCURRENT</span>
+          </div>
+          <div className="flex items-center gap-1.5 py-1">
+            <span className="text-zinc-600">REDACTION:</span>
+            <span className="text-emerald-400 flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" />
+              ENFORCED
+            </span>
+          </div>
+        </div>
+
+        {/* Quick Benchmark Targets */}
+        <div className="flex flex-wrap items-center gap-2 pt-0.5">
+          <span className="text-xs text-zinc-400 font-mono-code">PRESETS:</span>
           {quickTargets.map((item, idx) => (
             <button
               key={idx}
@@ -157,20 +181,20 @@ export const ScanForm: React.FC<ScanFormProps> = ({
                 setTargetUrl(item.url);
                 setInputError('');
               }}
-              className="text-xs px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-cyan-300 hover:border-cyan-600/50 transition-colors cursor-pointer"
+              className="text-xs font-mono-code px-2 py-1 rounded bg-[#07090E] border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors cursor-pointer"
             >
               {item.label}
             </button>
           ))}
         </div>
 
-        {/* Advanced Configuration Panel */}
+        {/* Advanced Concurrency & Depth Settings */}
         {showAdvanced && (
-          <div className="pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in">
-            <div className="bg-[#070b14] p-3.5 rounded-xl border border-slate-800">
-              <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1.5">
-                <span>Crawl Depth:</span>
-                <span className="text-cyan-400 font-mono-code">{depth} hops</span>
+          <div className="pt-3 border-t border-zinc-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-150">
+            <div className="bg-[#07090E] p-3 rounded border border-zinc-800">
+              <div className="flex justify-between text-xs font-mono-code text-zinc-300 mb-1">
+                <span>CRAWL HOPS:</span>
+                <span className="text-cyan-400 font-bold">{depth} DEPTH</span>
               </div>
               <input
                 type="range"
@@ -181,13 +205,13 @@ export const ScanForm: React.FC<ScanFormProps> = ({
                 disabled={isScanning}
                 className="w-full accent-cyan-400 cursor-pointer"
               />
-              <span className="text-[11px] text-slate-500 mt-1 block">Higher depth explores deeper multi-page links.</span>
+              <span className="text-[11px] text-zinc-500 mt-1 block">Maximum recursive link recursion steps</span>
             </div>
 
-            <div className="bg-[#070b14] p-3.5 rounded-xl border border-slate-800">
-              <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1.5">
-                <span>Concurrency Threads:</span>
-                <span className="text-cyan-400 font-mono-code">{threads} parallel</span>
+            <div className="bg-[#07090E] p-3 rounded border border-zinc-800">
+              <div className="flex justify-between text-xs font-mono-code text-zinc-300 mb-1">
+                <span>THREAD CONCURRENCY:</span>
+                <span className="text-cyan-400 font-bold">{threads} WORKERS</span>
               </div>
               <input
                 type="range"
@@ -199,27 +223,24 @@ export const ScanForm: React.FC<ScanFormProps> = ({
                 disabled={isScanning}
                 className="w-full accent-cyan-400 cursor-pointer"
               />
-              <span className="text-[11px] text-slate-500 mt-1 block">Parallel workers for path probing and heuristic checks.</span>
+              <span className="text-[11px] text-zinc-500 mt-1 block">Asynchronous parallel probe workers</span>
             </div>
           </div>
         )}
 
-        {/* Live Scan Progress */}
+        {/* Live Progress HUD */}
         {isScanning && (
-          <div className="pt-3 space-y-2 animate-in fade-in">
-            <div className="flex justify-between text-xs font-semibold">
-              <span className="text-cyan-400 flex items-center gap-1.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-                </span>
-                {progressStatus}
+          <div className="pt-2 space-y-2 animate-in fade-in duration-150">
+            <div className="flex justify-between text-xs font-mono-code">
+              <span className="text-cyan-400 flex items-center gap-2">
+                <Activity className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                <span>{progressStatus}</span>
               </span>
-              <span className="text-slate-400 font-mono-code">{progressPercent}%</span>
+              <span className="text-white font-bold">{progressPercent}%</span>
             </div>
-            <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
+            <div className="w-full bg-zinc-900 h-1.5 overflow-hidden border border-zinc-800">
               <div
-                className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 h-2.5 rounded-full transition-all duration-300 ease-out"
+                className="bg-cyan-400 h-full transition-all duration-200 ease-out"
                 style={{ width: `${progressPercent}%` }}
               ></div>
             </div>
