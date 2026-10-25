@@ -11,37 +11,39 @@ import {
   Copy, 
   Check, 
   ShieldCheck,
-  Lock,
-  Terminal,
-  FileCode
+  Lock
 } from 'lucide-react';
 import { Finding, Severity } from '../types';
+import { sounds } from '../services/soundFx';
 
 interface FindingsTableProps {
   findings: Finding[];
   targetUrl: string;
   isScanning: boolean;
   onExport: () => void;
+  onActionTrigger?: () => void;
 }
 
-const SEVERITY_CONFIG: Record<Severity, { bg: string; text: string; border: string; cvss: string; icon: any }> = {
-  CRITICAL: { bg: 'bg-rose-950/40', text: 'text-rose-400', border: 'border-rose-800/80', cvss: '9.8', icon: ShieldX },
-  HIGH: { bg: 'bg-orange-950/40', text: 'text-orange-400', border: 'border-orange-800/80', cvss: '7.5', icon: AlertTriangle },
-  MEDIUM: { bg: 'bg-amber-950/40', text: 'text-amber-400', border: 'border-amber-800/80', cvss: '5.4', icon: AlertCircle },
-  LOW: { bg: 'bg-sky-950/40', text: 'text-sky-400', border: 'border-sky-800/80', cvss: '3.1', icon: Info },
-  INFO: { bg: 'bg-zinc-900', text: 'text-zinc-400', border: 'border-zinc-800', cvss: '0.0', icon: CheckCircle },
+const SEVERITY_CONFIG: Record<Severity, { bg: string; text: string; border: string; cvss: string; glow: string; icon: any }> = {
+  CRITICAL: { bg: 'bg-rose-950/40', text: 'text-rose-400', border: 'border-rose-800/80', cvss: '9.8', glow: 'shadow-[0_0_15px_rgba(244,63,94,0.3)]', icon: ShieldX },
+  HIGH: { bg: 'bg-orange-950/40', text: 'text-orange-400', border: 'border-orange-800/80', cvss: '7.5', glow: 'shadow-[0_0_15px_rgba(249,115,22,0.3)]', icon: AlertTriangle },
+  MEDIUM: { bg: 'bg-amber-950/40', text: 'text-amber-400', border: 'border-amber-800/80', cvss: '5.4', glow: 'shadow-[0_0_15px_rgba(245,158,11,0.3)]', icon: AlertCircle },
+  LOW: { bg: 'bg-sky-950/40', text: 'text-sky-400', border: 'border-sky-800/80', cvss: '3.1', glow: 'shadow-[0_0_15px_rgba(14,165,233,0.3)]', icon: Info },
+  INFO: { bg: 'bg-zinc-900', text: 'text-zinc-400', border: 'border-zinc-800', cvss: '0.0', glow: 'shadow-[0_0_15px_rgba(161,161,170,0.2)]', icon: CheckCircle },
 };
 
 export const FindingsTable: React.FC<FindingsTableProps> = ({
   findings,
   targetUrl,
   isScanning,
-  onExport
+  onExport,
+  onActionTrigger
 }) => {
   const [filterSeverity, setFilterSeverity] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pulsingSev, setPulsingSev] = useState<string | null>(null);
 
   const counts = {
     CRITICAL: findings.filter(f => f.severity === 'CRITICAL').length,
@@ -61,7 +63,16 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
     return matchesSev && matchesSearch;
   });
 
+  const handleFilterClick = (sev: string) => {
+    sounds.playTargetLock();
+    onActionTrigger?.();
+    setFilterSeverity(sev);
+    setPulsingSev(sev);
+    setTimeout(() => setPulsingSev(null), 300);
+  };
+
   const handleCopyFinding = (finding: Finding) => {
+    sounds.playClick();
     const text = `[${finding.severity} - CVSS ${SEVERITY_CONFIG[finding.severity].cvss}] ${finding.check}\nTarget: ${finding.url}\nDetails: ${finding.detail}\nRemediation: ${finding.remediation || 'N/A'}`;
     navigator.clipboard.writeText(text);
     setCopiedId(finding.id);
@@ -70,28 +81,31 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Severity Counters Strip */}
+      {/* Severity Counters Strip with Crazy Option Switcher Animations */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
         {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'] as Severity[]).map((sev) => {
           const cfg = SEVERITY_CONFIG[sev];
           const Icon = cfg.icon;
           const isActive = filterSeverity === sev;
+          const isPulsing = pulsingSev === sev;
           return (
             <button
               key={sev}
-              onClick={() => setFilterSeverity(isActive ? 'ALL' : sev)}
-              className={`p-3 rounded border text-left transition-colors cursor-pointer ${
+              onClick={() => handleFilterClick(isActive ? 'ALL' : sev)}
+              onMouseEnter={() => sounds.playClick()}
+              className={`p-3 rounded border text-left transition-all cursor-pointer transform active:scale-95 ${
                 isActive 
-                  ? `${cfg.bg} ${cfg.border} ring-1 ring-white/20` 
-                  : 'bg-[#0B0F17] border-zinc-800 hover:border-zinc-700'
-              }`}
+                  ? `${cfg.bg} ${cfg.border} ring-1 ring-white/30 ${cfg.glow} scale-[1.02]` 
+                  : 'bg-[#0B0F17] border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/60'
+              } ${isPulsing ? 'animate-glitch' : ''}`}
             >
               <div className="flex items-center justify-between mb-1 text-[11px] font-mono-code font-bold">
                 <span className={cfg.text}>{sev}</span>
                 <Icon className={`w-3.5 h-3.5 ${cfg.text}`} />
               </div>
-              <div className="text-xl font-bold text-white font-mono-code">
-                {counts[sev]}
+              <div className="text-xl font-bold text-white font-mono-code flex items-center justify-between">
+                <span>{counts[sev]}</span>
+                <span className="text-[10px] text-zinc-500 font-normal">CVSS {cfg.cvss}</span>
               </div>
             </button>
           );
@@ -99,11 +113,12 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
 
         {/* Total Findings Card */}
         <button
-          onClick={() => setFilterSeverity('ALL')}
-          className={`p-3 rounded border text-left transition-colors cursor-pointer ${
+          onClick={() => handleFilterClick('ALL')}
+          onMouseEnter={() => sounds.playClick()}
+          className={`p-3 rounded border text-left transition-all cursor-pointer transform active:scale-95 ${
             filterSeverity === 'ALL'
-              ? 'bg-zinc-800 border-zinc-600 ring-1 ring-white/20'
-              : 'bg-[#0B0F17] border-zinc-800 hover:border-zinc-700'
+              ? 'bg-zinc-800 border-zinc-600 ring-1 ring-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.25)] scale-[1.02]'
+              : 'bg-[#0B0F17] border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/60'
           }`}
         >
           <div className="flex items-center justify-between mb-1 text-[11px] font-mono-code font-bold text-zinc-300">
@@ -132,7 +147,7 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
         <div className="flex items-center gap-2">
           {filterSeverity !== 'ALL' && (
             <button
-              onClick={() => setFilterSeverity('ALL')}
+              onClick={() => handleFilterClick('ALL')}
               className="text-xs font-mono-code px-2 py-1.5 rounded bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer"
             >
               RESET [{filterSeverity}]
@@ -140,9 +155,12 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
           )}
 
           <button
-            onClick={onExport}
+            onClick={() => {
+              sounds.playSonarPing();
+              onExport();
+            }}
             disabled={findings.length === 0}
-            className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-zinc-200 flex items-center gap-1.5 transition-colors border border-zinc-700 cursor-pointer"
+            className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-zinc-200 flex items-center gap-1.5 transition-colors border border-zinc-700 cursor-pointer active:scale-95"
           >
             <Download className="w-3.5 h-3.5 text-cyan-400" />
             <span>EXPORT AUDIT (JSON)</span>
@@ -152,7 +170,7 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
 
       {/* Empty State */}
       {findings.length === 0 ? (
-        <div className="bg-[#0B0F17] border border-dashed border-zinc-800 rounded-lg p-10 text-center">
+        <div className="bg-[#0B0F17] border border-dashed border-zinc-800 rounded-lg p-10 text-center relative overflow-hidden">
           <div className="w-12 h-12 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto mb-3 text-cyan-400">
             <Lock className="w-6 h-6 stroke-[1.8]" />
           </div>
@@ -169,14 +187,14 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
         <div className="bg-[#0B0F17] border border-zinc-800 rounded-lg p-8 text-center font-mono-code text-xs">
           <p className="text-zinc-400">No telemetry records match query: "{searchTerm}".</p>
           <button 
-            onClick={() => { setSearchTerm(''); setFilterSeverity('ALL'); }}
+            onClick={() => { setSearchTerm(''); handleFilterClick('ALL'); }}
             className="mt-2 text-cyan-400 underline cursor-pointer"
           >
             Clear Search Filters
           </button>
         </div>
       ) : (
-        /* Findings List */
+        /* Findings List with 3D Elevation */
         <div className="space-y-2">
           {filteredFindings.map((finding) => {
             const cfg = SEVERITY_CONFIG[finding.severity];
@@ -184,7 +202,7 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
             return (
               <div
                 key={finding.id}
-                className="bg-[#0B0F17] border border-zinc-800 hover:border-zinc-700 rounded p-3.5 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono-code text-xs"
+                className="bg-[#0B0F17] border border-zinc-800 hover:border-zinc-700 hover:shadow-[0_4px_20px_rgba(0,0,0,0.5)] rounded p-3.5 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono-code text-xs"
               >
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div className={`p-1.5 rounded ${cfg.bg} border ${cfg.border} shrink-0 mt-0.5`}>
@@ -221,8 +239,11 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
                   </button>
 
                   <button
-                    onClick={() => setSelectedFinding(finding)}
-                    className="px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    onClick={() => {
+                      sounds.playTargetLock();
+                      setSelectedFinding(finding);
+                    }}
+                    className="px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 hover:border-cyan-500/50 text-zinc-200 border border-zinc-700 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
                   >
                     <Eye className="w-3.5 h-3.5 text-cyan-400" />
                     <span>INSPECT</span>

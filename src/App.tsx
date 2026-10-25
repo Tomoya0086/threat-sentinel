@@ -7,10 +7,13 @@ import { AboutSection } from './components/AboutSection';
 import { NotFoundPage } from './components/NotFoundPage';
 import { Footer } from './components/Footer';
 import { LegalModal } from './components/LegalModals';
+import { CyberWarpOverlay } from './components/CyberWarpOverlay';
+import { InteractiveBackground } from './components/InteractiveBackground';
 import { Finding } from './types';
 import { executeVulnerabilityScan } from './services/scannerEngine';
 import { CyberRadarAnimation } from './components/CyberRadarAnimation';
 import { Shield, Lock, Cpu, Database } from 'lucide-react';
+import { sounds } from './services/soundFx';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('scanner');
@@ -22,8 +25,9 @@ export const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeLegalModal, setActiveLegalModal] = useState<'privacy' | 'terms' | null>(null);
+  const [shockwaveCount, setShockwaveCount] = useState(0);
 
-  // Dynamic Page Title (No Em Dashes)
+  // Dynamic Page Title
   useEffect(() => {
     if (isScanning) {
       document.title = `[SCANNING ${progressPercent}%] ThreatSentinel | Web Vulnerability Scanner`;
@@ -34,6 +38,15 @@ export const App: React.FC = () => {
     }
   }, [isScanning, progressPercent, findings.length]);
 
+  const triggerShockwave = () => {
+    setShockwaveCount(prev => prev + 1);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setCurrentTab(tab);
+    triggerShockwave();
+  };
+
   const handleStartScan = async (url: string, depth: number, threads: number) => {
     setTargetUrl(url);
     setIsScanning(true);
@@ -42,6 +55,7 @@ export const App: React.FC = () => {
     setFindings([]);
     setErrorMessage(null);
     setSuccessMessage(null);
+    triggerShockwave();
 
     try {
       const results = await executeVulnerabilityScan(
@@ -52,14 +66,18 @@ export const App: React.FC = () => {
         },
         (finding) => {
           setFindings((prev) => [finding, ...prev]);
+          sounds.playAlarmPulse();
         }
       );
 
       setIsScanning(false);
       setSuccessMessage(`Assessment completed. Identified ${results.length} total security findings across target host.`);
+      sounds.playSonarPing();
+      triggerShockwave();
     } catch (err: any) {
       setIsScanning(false);
       setErrorMessage(err.message || 'An unexpected error occurred during the vulnerability scan.');
+      sounds.playAlarmPulse();
     }
   };
 
@@ -67,6 +85,7 @@ export const App: React.FC = () => {
     setIsScanning(false);
     setProgressStatus('Scan halted by operator.');
     setSuccessMessage('Assessment paused. Recorded findings preserved below.');
+    sounds.playClick();
   };
 
   const handleExportJSON = () => {
@@ -92,22 +111,28 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#08090D] text-zinc-100 overflow-x-hidden selection:bg-cyan-500/20 selection:text-cyan-200">
+    <div className="min-h-screen flex flex-col bg-[#08090D] text-zinc-100 overflow-x-hidden selection:bg-cyan-500/20 selection:text-cyan-200 relative">
+      {/* Crazy Interactive Cyber Particle & Shockwave Background */}
+      <InteractiveBackground shockwaveTrigger={shockwaveCount} />
+
+      {/* Crazy Quantum Warp Transition on Tab/Option Switch */}
+      <CyberWarpOverlay triggerKey={currentTab} />
+
       {/* Navigation Bar */}
       <Navbar 
         currentTab={currentTab} 
-        onTabChange={setCurrentTab} 
+        onTabChange={handleTabChange} 
         onOpenPrivacy={() => setActiveLegalModal('privacy')}
         onOpenTerms={() => setActiveLegalModal('terms')}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 relative z-10">
         {currentTab === 'scanner' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Tactical Hero Header */}
             <div className="space-y-3 border-b border-zinc-800/80 pb-6">
-              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-cyan-400 text-xs font-mono-code font-semibold">
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-cyan-400 text-xs font-mono-code font-semibold shadow-[0_0_10px_rgba(6,182,212,0.1)]">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                 <span>ATTACK SURFACE RECONNAISSANCE & ZERO-LEAK AUDITING</span>
               </div>
@@ -120,7 +145,7 @@ export const App: React.FC = () => {
 
               {/* Operational Telemetry Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px] font-mono-code text-zinc-400">
-                <div className="p-2.5 rounded bg-[#0B0F17] border border-zinc-800 flex items-center gap-2">
+                <div className="p-2.5 rounded bg-[#0B0F17]/90 border border-zinc-800 flex items-center gap-2 hover:border-cyan-500/30 transition-colors">
                   <Shield className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   <div>
                     <span className="text-zinc-500 block text-[10px]">CORE RULES:</span>
@@ -128,7 +153,7 @@ export const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded bg-[#0B0F17] border border-zinc-800 flex items-center gap-2">
+                <div className="p-2.5 rounded bg-[#0B0F17]/90 border border-zinc-800 flex items-center gap-2 hover:border-emerald-500/30 transition-colors">
                   <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <div>
                     <span className="text-zinc-500 block text-[10px]">REDACTION:</span>
@@ -136,7 +161,7 @@ export const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded bg-[#0B0F17] border border-zinc-800 flex items-center gap-2">
+                <div className="p-2.5 rounded bg-[#0B0F17]/90 border border-zinc-800 flex items-center gap-2 hover:border-sky-500/30 transition-colors">
                   <Cpu className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   <div>
                     <span className="text-zinc-500 block text-[10px]">EXECUTION:</span>
@@ -144,7 +169,7 @@ export const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded bg-[#0B0F17] border border-zinc-800 flex items-center gap-2">
+                <div className="p-2.5 rounded bg-[#0B0F17]/90 border border-zinc-800 flex items-center gap-2 hover:border-amber-500/30 transition-colors">
                   <Database className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <div>
                     <span className="text-zinc-500 block text-[10px]">CVE HARMONIZATION:</span>
@@ -163,6 +188,7 @@ export const App: React.FC = () => {
               progressStatus={progressStatus}
               errorMessage={errorMessage}
               successMessage={successMessage}
+              onActionTrigger={triggerShockwave}
             />
 
             {/* Aerospace/Cyber Vector Radar Canvas */}
@@ -174,13 +200,14 @@ export const App: React.FC = () => {
               targetUrl={targetUrl}
               isScanning={isScanning}
               onExport={handleExportJSON}
+              onActionTrigger={triggerShockwave}
             />
           </div>
         )}
 
         {currentTab === 'remediation' && <RemediationGuide />}
         {currentTab === 'about' && <AboutSection />}
-        {currentTab === '404' && <NotFoundPage onReturnHome={() => setCurrentTab('scanner')} />}
+        {currentTab === '404' && <NotFoundPage onReturnHome={() => handleTabChange('scanner')} />}
       </main>
 
       {/* Footer */}

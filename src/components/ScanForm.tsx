@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Play, Square, AlertCircle, CheckCircle2, Globe, SlidersHorizontal, Terminal, ShieldCheck, Activity } from 'lucide-react';
+import { Play, Square, AlertCircle, CheckCircle2, Globe, SlidersHorizontal, Terminal, ShieldCheck, Activity, Crosshair } from 'lucide-react';
+import { sounds } from '../services/soundFx';
 
 interface ScanFormProps {
   onStartScan: (url: string, depth: number, threads: number) => void;
@@ -9,6 +10,7 @@ interface ScanFormProps {
   progressStatus: string;
   errorMessage: string | null;
   successMessage: string | null;
+  onActionTrigger?: () => void;
 }
 
 export const ScanForm: React.FC<ScanFormProps> = ({
@@ -18,13 +20,15 @@ export const ScanForm: React.FC<ScanFormProps> = ({
   progressPercent,
   progressStatus,
   errorMessage,
-  successMessage
+  successMessage,
+  onActionTrigger
 }) => {
   const [targetUrl, setTargetUrl] = useState('https://chemistry-virtual-14mxmgyg9-hoctf.vercel.app');
   const [depth, setDepth] = useState(2);
   const [threads, setThreads] = useState(8);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [inputError, setInputError] = useState('');
+  const [isScrambling, setIsScrambling] = useState(false);
 
   const quickTargets = [
     { label: 'Target: ChemSpace (Vercel)', url: 'https://chemistry-virtual-14mxmgyg9-hoctf.vercel.app' },
@@ -32,11 +36,40 @@ export const ScanForm: React.FC<ScanFormProps> = ({
     { label: 'Target: API Sandbox', url: 'https://sandbox.threatsentinel.io/v1' }
   ];
 
+  // Hollywood Hacker Text Scramble Animation
+  const handleSelectPreset = (url: string) => {
+    sounds.playTargetLock();
+    onActionTrigger?.();
+    setIsScrambling(true);
+
+    const chars = '0123456789ABCDEF$#@%&*!';
+    let iteration = 0;
+    const interval = setInterval(() => {
+      setTargetUrl((prev) => 
+        url
+          .split('')
+          .map((letter, index) => {
+            if (index < iteration) return url[index];
+            return chars[Math.floor(Math.random() * chars.length)];
+          })
+          .join('')
+      );
+
+      if (iteration >= url.length) {
+        clearInterval(interval);
+        setTargetUrl(url);
+        setIsScrambling(false);
+      }
+      iteration += 3;
+    }, 25);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = targetUrl.trim();
     if (!trimmed) {
       setInputError('Please specify a target hostname or IP address.');
+      sounds.playAlarmPulse();
       return;
     }
     try {
@@ -45,14 +78,23 @@ export const ScanForm: React.FC<ScanFormProps> = ({
         : `https://${trimmed}`;
       new URL(formatted);
       setInputError('');
+      sounds.playSonarPing();
+      onActionTrigger?.();
       onStartScan(formatted, depth, threads);
     } catch {
       setInputError('Invalid URI syntax. Please provide a fully qualified domain name (e.g. https://target.domain).');
+      sounds.playAlarmPulse();
     }
   };
 
   return (
-    <div className="bg-[#0B0F17] border border-zinc-800 rounded-lg p-5 sm:p-6 shadow-xl space-y-4">
+    <div className="bg-[#0B0F17] border border-zinc-800 rounded-lg p-5 sm:p-6 shadow-xl space-y-4 relative overflow-hidden">
+      {/* Laser Corner Brackets */}
+      <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-500 pointer-events-none"></div>
+      <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-500 pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-500 pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-500 pointer-events-none"></div>
+
       {/* Alert Banners */}
       {errorMessage && (
         <div className="p-3.5 rounded bg-rose-950/20 border border-rose-800/50 flex items-start gap-3 text-rose-300 text-xs sm:text-sm animate-in fade-in">
@@ -89,13 +131,16 @@ export const ScanForm: React.FC<ScanFormProps> = ({
               <Terminal className="w-3.5 h-3.5 text-cyan-400" />
               Target Host Input Console:
             </span>
-            <span className="text-zinc-500 hidden sm:inline">RFC 3986 COMPLIANT URI</span>
+            <span className="text-zinc-500 hidden sm:inline flex items-center gap-1">
+              <Crosshair className="w-3 h-3 text-cyan-400 animate-spin" />
+              COORDINATES ACTIVE
+            </span>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2.5">
-            <div className="relative flex-1">
+            <div className={`relative flex-1 ${isScrambling ? 'animate-glitch' : ''}`}>
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                <Globe className="w-4 h-4 text-cyan-400" />
+                <Globe className={`w-4 h-4 ${isScrambling ? 'text-emerald-400' : 'text-cyan-400'}`} />
               </div>
               <input
                 type="text"
@@ -104,9 +149,9 @@ export const ScanForm: React.FC<ScanFormProps> = ({
                   setTargetUrl(e.target.value);
                   if (inputError) setInputError('');
                 }}
-                disabled={isScanning}
+                disabled={isScanning || isScrambling}
                 placeholder="https://target-organization.com"
-                className="w-full pl-10 pr-4 py-3 bg-[#07090E] border border-zinc-700/80 rounded text-white placeholder-zinc-600 text-sm focus:outline-none focus:border-cyan-500 font-mono-code transition-colors"
+                className="w-full pl-10 pr-4 py-3 bg-[#07090E] border border-zinc-700/80 rounded text-white placeholder-zinc-600 text-sm focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(6,182,212,0.25)] font-mono-code transition-all"
               />
             </div>
 
@@ -114,7 +159,8 @@ export const ScanForm: React.FC<ScanFormProps> = ({
               {!isScanning ? (
                 <button
                   type="submit"
-                  className="flex-1 sm:flex-none px-6 py-3 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-colors cursor-pointer select-none"
+                  onMouseEnter={() => sounds.playClick()}
+                  className="flex-1 sm:flex-none px-6 py-3 rounded bg-emerald-500 hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] text-black font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer select-none active:scale-95"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   <span>Execute Audit</span>
@@ -123,7 +169,7 @@ export const ScanForm: React.FC<ScanFormProps> = ({
                 <button
                   type="button"
                   onClick={onStopScan}
-                  className="flex-1 sm:flex-none px-6 py-3 rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-colors cursor-pointer select-none"
+                  className="flex-1 sm:flex-none px-6 py-3 rounded bg-rose-600 hover:bg-rose-500 hover:shadow-[0_0_20px_rgba(244,63,94,0.4)] text-white font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer select-none"
                 >
                   <Square className="w-3.5 h-3.5 fill-current" />
                   <span>Abort Scan</span>
@@ -132,7 +178,10 @@ export const ScanForm: React.FC<ScanFormProps> = ({
 
               <button
                 type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
+                onClick={() => {
+                  sounds.playClick();
+                  setShowAdvanced(!showAdvanced);
+                }}
                 className={`p-3 rounded border transition-colors flex items-center justify-center cursor-pointer ${
                   showAdvanced 
                     ? 'bg-zinc-800 border-cyan-500/50 text-cyan-400' 
@@ -170,18 +219,16 @@ export const ScanForm: React.FC<ScanFormProps> = ({
           </div>
         </div>
 
-        {/* Quick Benchmark Targets */}
+        {/* Quick Benchmark Targets with Hacker Scramble */}
         <div className="flex flex-wrap items-center gap-2 pt-0.5">
           <span className="text-xs text-zinc-400 font-mono-code">PRESETS:</span>
           {quickTargets.map((item, idx) => (
             <button
               key={idx}
               type="button"
-              onClick={() => {
-                setTargetUrl(item.url);
-                setInputError('');
-              }}
-              className="text-xs font-mono-code px-2 py-1 rounded bg-[#07090E] border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors cursor-pointer"
+              onClick={() => handleSelectPreset(item.url)}
+              onMouseEnter={() => sounds.playClick()}
+              className="text-xs font-mono-code px-2.5 py-1 rounded bg-[#07090E] border border-zinc-800 text-zinc-400 hover:text-cyan-300 hover:border-cyan-500/50 hover:shadow-[0_0_10px_rgba(6,182,212,0.2)] transition-all cursor-pointer active:scale-95"
             >
               {item.label}
             </button>
@@ -201,7 +248,10 @@ export const ScanForm: React.FC<ScanFormProps> = ({
                 min="1"
                 max="4"
                 value={depth}
-                onChange={(e) => setDepth(Number(e.target.value))}
+                onChange={(e) => {
+                  sounds.playClick();
+                  setDepth(Number(e.target.value));
+                }}
                 disabled={isScanning}
                 className="w-full accent-cyan-400 cursor-pointer"
               />
@@ -219,7 +269,10 @@ export const ScanForm: React.FC<ScanFormProps> = ({
                 max="16"
                 step="2"
                 value={threads}
-                onChange={(e) => setThreads(Number(e.target.value))}
+                onChange={(e) => {
+                  sounds.playClick();
+                  setThreads(Number(e.target.value));
+                }}
                 disabled={isScanning}
                 className="w-full accent-cyan-400 cursor-pointer"
               />
@@ -240,7 +293,7 @@ export const ScanForm: React.FC<ScanFormProps> = ({
             </div>
             <div className="w-full bg-zinc-900 h-1.5 overflow-hidden border border-zinc-800">
               <div
-                className="bg-cyan-400 h-full transition-all duration-200 ease-out"
+                className="bg-cyan-400 h-full transition-all duration-200 ease-out shadow-[0_0_12px_#00F0FF]"
                 style={{ width: `${progressPercent}%` }}
               ></div>
             </div>

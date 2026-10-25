@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Shield, Menu, X, Mail, Phone, Lock, Scale, ShieldCheck } from 'lucide-react';
+import { Shield, Menu, X, Mail, Phone, Volume2, VolumeX } from 'lucide-react';
+import { sounds } from '../services/soundFx';
 
 interface NavbarProps {
   currentTab: string;
@@ -10,6 +11,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, onTabChange, onOpenPrivacy, onOpenTerms }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
 
   const navLinks = [
     { id: 'scanner', label: 'Vulnerability Scanner' },
@@ -18,8 +20,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onTabChange, onOpenP
   ];
 
   const handleNavClick = (id: string) => {
+    sounds.playTabWarp();
     onTabChange(id);
     setMobileMenuOpen(false);
+  };
+
+  const toggleAudio = () => {
+    const nextState = !audioEnabled;
+    sounds.enabled = nextState;
+    setAudioEnabled(nextState);
+    if (nextState) sounds.playTargetLock();
   };
 
   return (
@@ -28,15 +38,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onTabChange, onOpenP
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo & Telemetry Indicator */}
           <div 
-            className="flex items-center gap-3 cursor-pointer select-none"
+            className="flex items-center gap-3 cursor-pointer select-none group"
             onClick={() => handleNavClick('scanner')}
+            onMouseEnter={() => sounds.playClick()}
           >
-            <div className="w-9 h-9 rounded bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-cyan-400 shadow-sm">
+            <div className="w-9 h-9 rounded bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-cyan-400 shadow-sm group-hover:border-cyan-500/50 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all">
               <Shield className="w-5 h-5 text-cyan-400 stroke-[2.2]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-base tracking-tight text-white">
+                <span className="font-bold text-base tracking-tight text-white group-hover:text-cyan-300 transition-colors">
                   ThreatSentinel
                 </span>
                 <span className="hidden sm:inline-block text-[11px] font-mono-code px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-cyan-400">
@@ -56,19 +67,37 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onTabChange, onOpenP
               <button
                 key={link.id}
                 onClick={() => handleNavClick(link.id)}
-                className={`px-3.5 py-1.5 rounded text-xs font-semibold tracking-wide transition-colors ${
+                onMouseEnter={() => sounds.playClick()}
+                className={`relative px-3.5 py-1.5 rounded text-xs font-semibold tracking-wide transition-all cursor-pointer ${
                   currentTab === link.id
-                    ? 'bg-zinc-800 text-white border border-zinc-700'
+                    ? 'bg-zinc-800 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
                     : 'text-zinc-400 hover:text-white hover:bg-zinc-900/60'
                 }`}
               >
                 {link.label}
+                {currentTab === link.id && (
+                  <span className="absolute bottom-0 inset-x-2 h-[2px] bg-cyan-400 shadow-[0_0_8px_#00F0FF]"></span>
+                )}
               </button>
             ))}
           </nav>
 
-          {/* Direct Security Contact Actions (Clickable Email & Phone) */}
+          {/* Audio Synthesizer & Direct Security Actions */}
           <div className="hidden lg:flex items-center gap-3 text-xs font-mono-code text-zinc-400">
+            {/* Audio Feedback Toggle */}
+            <button
+              onClick={toggleAudio}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded border transition-colors cursor-pointer ${
+                audioEnabled 
+                  ? 'bg-zinc-900 border-cyan-500/40 text-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.15)]' 
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-600'
+              }`}
+              title="Toggle Cyber Synthesizer Sound Effects"
+            >
+              {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              <span>AUDIO: {audioEnabled ? 'ON' : 'MUTED'}</span>
+            </button>
+
             <a 
               href="mailto:security@threatsentinel.io?subject=Security%20Assessment%20Inquiry" 
               className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors py-1 px-2.5 rounded bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700"
@@ -88,7 +117,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onTabChange, onOpenP
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden">
+          <div className="flex md:hidden items-center gap-2">
+            <button
+              onClick={toggleAudio}
+              className="p-2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400"
+              aria-label="Toggle audio"
+            >
+              {audioEnabled ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 focus:outline-none"
